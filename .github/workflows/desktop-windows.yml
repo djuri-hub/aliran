@@ -1,0 +1,39 @@
+name: Desktop Windows
+
+# Builds the Electron desktop app (the thing viewers run on a laptop) into the two Windows
+# artifacts the download page offers. Runs on Windows because packaging an NSIS installer
+# needs Windows tooling, and because this way no build tooling has to live on the server.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-windows.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        run: npm ci || npm install
+      - name: Build + package
+        run: npm run dist
+      - name: List artifacts
+        run: dir dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: star-desktop-windows
+          path: |
+            desktop/dist/*.exe
+          if-no-files-found: error
