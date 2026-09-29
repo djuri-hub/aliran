@@ -16,6 +16,9 @@ jobs:
       - name: dependencies
         working-directory: client
         run: npm install --workspaces=false --legacy-peer-deps --no-audit --no-fund
+      - name: crypto deps
+        working-directory: client
+        run: npm install @noble/curves --no-audit --no-fund --legacy-peer-deps
       - name: bundle backend
         working-directory: client
         run: npm run bundle-backend
