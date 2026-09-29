@@ -727,6 +727,7 @@ export function startAdminServer (ctx, opts = {}) {
         else if (r3 === 'status') { out = await ops.setUserStatus(ctx, u, (await readJson(req)).status); act('user-status', { user: u, status: out.status }) }
         else if (r3 === 'logout-all') { out = await ops.logoutAll(ctx, u); act('user-logout-all', { user: u }) }
         else if (r3 === 'max-devices') { out = await ops.setMaxDevices(ctx, u, (await readJson(req)).maxDevices); act('user-max-devices', { user: u }) }
+        else if (r3 === 'expiry') { out = await ops.setUserExpiry(ctx, u, (await readJson(req)).expiresAt); act('user-expiry', { user: u }) }
         else if (r3 === 'grants') {
           const streamId = ops.checkName((await readJson(req)).streamId, 'stream id')
           out = await ops.grant(ctx, u, streamId); act('grant', { user: u, streamId })

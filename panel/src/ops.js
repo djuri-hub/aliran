@@ -72,7 +72,10 @@ export async function createUser (ctx, username, password) {
     devices: [],
     tokenVersion: 1,
     maxDevices: ctx.config.maxDevicesDefault,
-    status: 'active'
+    status: 'active',
+    // Operator-set validity: null means no expiry. Enforced in the login path, so an
+    // account that has run out cannot sign in, and live sessions are revoked separately.
+    expiresAt: null
   }
   await ctx.db.put('user/' + username, record)
   return userSummary(username, record)
@@ -113,6 +116,25 @@ export async function setMaxDevices (ctx, username, n) {
   if (!Number.isInteger(max) || max < 1 || max > 1000) bad('maxDevices must be an integer >= 1')
   const user = await requireUser(ctx, username)
   user.maxDevices = max
+  await ctx.db.put('user/' + username, user)
+  return userSummary(username, user)
+}
+
+// "Valid until": the date after which the account cannot sign in. null clears it. A date
+// already past revokes live sessions the same way disabling does.
+export async function setUserExpiry (ctx, username, expiresAt) {
+  const user = await requireUser(ctx, username)
+  let value = null
+  if (expiresAt !== null && expiresAt !== undefined && String(expiresAt).trim() !== '') {
+    const at = typeof expiresAt === 'number' ? expiresAt : Date.parse(String(expiresAt))
+    if (!Number.isFinite(at)) bad('expiresAt must be a date (e.g. 2026-12-31) or null')
+    value = at
+  }
+  user.expiresAt = value
+  if (value !== null && value <= Date.now()) {
+    user.devices = []
+    user.tokenVersion = (user.tokenVersion || 1) + 1
+  }
   await ctx.db.put('user/' + username, user)
   return userSummary(username, user)
 }
@@ -275,6 +297,7 @@ export function userSummary (username, u) {
     // the field existed.
     eventSources: Array.isArray(u.eventSources) ? u.eventSources : [],
     maxDevices: u.maxDevices,
+    expiresAt: u.expiresAt || null,
     devices: (u.devices || []).length,
     tokenVersion: u.tokenVersion || 1
   }

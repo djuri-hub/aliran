@@ -146,6 +146,9 @@ export function attachLoginRpc (socket, { keys, oprfKey, difficulty, throttle, d
     if (!node) { if (analytics) analytics.loginFailed(); return json({ error: 'unknown user' }) }
     const user = node.value
     if (user.status && user.status !== 'active') { if (analytics) analytics.loginFailed(); return json({ error: 'account disabled' }) }
+    // An account past its date is refused here, exactly like a disabled one. Unset
+    // (null) is every account that existed before this field, so nothing changes for them.
+    if (user.expiresAt && Number(user.expiresAt) <= Date.now()) { if (analytics) analytics.loginFailed(); return json({ error: 'account expired' }) }
     const sigBuf = hexField(sig, 64) // Ed25519 signature — 64 bytes
     const authPubBuf = hexField(user.authPub, 32) // Ed25519 public key — 32 bytes
     if (!authPubBuf || !sigBuf || !authVerify(authPubBuf, chal, sigBuf)) {

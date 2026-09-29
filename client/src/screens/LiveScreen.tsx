@@ -90,6 +90,7 @@ import { getLocale, useI18n } from '@aliran/i18n'
 import { backend, type Stream } from '../worklet'
 import { setOrientation } from '../orientation'
 import { onChannelKey } from '../channelKeys'
+import { wakeChannel } from '../wake'
 import { useMountDeferred } from '../defer'
 import { useStableCallback } from '../hooks'
 import { autoTunable, blockedWithoutPin, markUnlocked, needsPin, visibleStreams } from '../parental'
@@ -732,6 +733,9 @@ export function LiveScreen ({ route, navigation }: Props) {
   const pinScope = useRef<string | undefined>(undefined)
 
   function play (s: Stream, { collapse = false, scope }: { collapse?: boolean; scope?: string } = {}) {
+    // Channels sleep until watched: ask the operator's service to start this one, and
+    // let the tuner retry while the broadcaster pulls it. Fire-and-forget, never awaited.
+    wakeChannel(String(s.id))
     // The last gate before a tune, and it stands here as well as at the routes that can
     // reach it: a restricted channel on a device with NO PIN is refused outright. Every
     // local caller passes a record out of `streams` (already parental-filtered), so this

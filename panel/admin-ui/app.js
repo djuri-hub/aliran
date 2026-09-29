@@ -202,6 +202,7 @@ function renderUsers () {
         <button class="btn small" data-act="grant">+ grant</button>
         <button class="btn small" data-act="password">password</button>
         <button class="btn small" data-act="logout-all">logout all</button>
+        <button class="btn small" data-act="expiry" title="date the account stops working">važi do: ${u.expiresAt ? new Date(u.expiresAt).toLocaleDateString() : '—'}</button>
         <button class="btn small ${u.status === 'active' ? 'danger' : ''}" data-act="toggle">${u.status === 'active' ? 'disable' : 'enable'}</button>
         <button class="btn small danger" data-act="del">delete</button>
       </div></td>`
@@ -279,6 +280,7 @@ function renderUsers () {
     tr.querySelector('[data-act=grant]').addEventListener('click', () => grantStream(u))
     tr.querySelector('[data-act=password]').addEventListener('click', () => changePassword(u.username))
     tr.querySelector('[data-act=logout-all]').addEventListener('click', () => doLogoutAll(u.username))
+    tr.querySelector('[data-act=expiry]').addEventListener('click', () => editExpiry(u))
     tr.querySelector('[data-act=toggle]').addEventListener('click', () => toggleStatus(u))
     tr.querySelector('[data-act=del]').addEventListener('click', () => deleteUser(u.username))
     tbody.appendChild(tr)
@@ -1147,6 +1149,18 @@ $('#update-file').addEventListener('change', (e) => {
 
 // fields: [{name, label, type='text', value, options?, placeholder?, min?, max?, step?}] → values object or null.
 // opts.danger styles the OK button destructively.
+// An operator-set date after which the account cannot sign in. Empty clears it. The
+// panel refuses the login itself (see ops.setUserExpiry + the login path), so this only
+// writes the date down.
+async function editExpiry (u) {
+  const current = u.expiresAt ? new Date(u.expiresAt).toISOString().slice(0, 10) : ''
+  const v = await dialog(`Valid until — ${u.username}`, [
+    { name: 'date', label: 'Date (empty = no expiry)', type: 'date', value: current }
+  ])
+  if (!v) return
+  act(() => api('POST', `/api/users/${u.username}/expiry`, { expiresAt: v.date || null }), 'expiry updated')
+}
+
 function dialog (title, fields, { okLabel = 'Save', body = '', danger = false } = {}) {
   return new Promise((resolve) => {
     const dlg = $('#dlg')
@@ -2914,3 +2928,34 @@ $('#bk-tpl-file').addEventListener('change', async (e) => {
     await loadBackup()
   } catch (err) { toast(err.message, true) }
 })
+
+// Operator request: tick every channel of a package at once, instead of one row at a time.
+// Additive on purpose — the package dialog keeps its own handlers, and the buttons dispatch
+// a real change event so whatever the dialog considers "chosen" stays in step.
+;(function () {
+  const ensureSelectAll = () => {
+    const list = document.getElementById('pk-list')
+    if (!list || document.getElementById('pk-all-row')) return
+    const row = document.createElement('div')
+    row.id = 'pk-all-row'
+    row.style.cssText = 'margin:4px 0 8px;display:flex;gap:8px'
+    const make = (label, checked) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'btn small'
+      button.textContent = label
+      button.addEventListener('click', () => {
+        for (const box of list.querySelectorAll('input[type=checkbox]')) {
+          if (box.checked === checked) continue
+          box.checked = checked
+          box.dispatchEvent(new Event('change', { bubbles: true }))
+        }
+      })
+      return button
+    }
+    row.append(make('Sve', true), make('Ništa', false))
+    list.parentNode.insertBefore(row, list)
+  }
+  new MutationObserver(ensureSelectAll).observe(document.documentElement, { childList: true, subtree: true })
+  ensureSelectAll()
+})()

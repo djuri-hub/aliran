@@ -1,7 +1,7 @@
 {
   "name": "@aliran/client",
-  "version": "0.0.1",
-  "description": "Aliran client — React Native (phone + Android TV) P2P OTT app",
+  "version": "0.6.2",
+  "description": "Aliran client \u2014 React Native (phone + Android TV) P2P OTT app",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -30,7 +30,7 @@
     "react-native-screens": "4.25.0",
     "react-native-video": "6.19.2"
   },
-  "_appDependencies_TODO": "Added per segment as screens are wired (pin against react-native-tvos 0.83 — latest majors require RN>=0.84): @react-navigation/native + @react-navigation/native-stack + react-native-screens (S6a/S6b), react-native-video (S6c).",
+  "_appDependencies_TODO": "Added per segment as screens are wired (pin against react-native-tvos 0.83 \u2014 latest majors require RN>=0.84): @react-navigation/native + @react-navigation/native-stack + react-native-screens (S6a/S6b), react-native-video (S6c).",
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
