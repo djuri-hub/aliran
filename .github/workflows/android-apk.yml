@@ -13,7 +13,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
       - name: dependencies
         working-directory: client
         run: npm install --workspaces=false --legacy-peer-deps --no-audit --no-fund
