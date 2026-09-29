@@ -13,12 +13,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: bundle backend
-        working-directory: client
-        run: npm run bundle-backend
       - name: dependencies
         working-directory: client
         run: npm install --workspaces=false --legacy-peer-deps --no-audit --no-fund
+      - name: bundle backend
+        working-directory: client
+        run: npm run bundle-backend
       - name: keystore
         run: keytool -genkeypair -v -keystore "$RUNNER_TEMP/star.jks" -alias star -keyalg RSA -keysize 2048 -validity 10000 -storepass star1406 -keypass star1406 -dname "CN=Star,O=Star,C=BA"
       - name: assembleRelease
