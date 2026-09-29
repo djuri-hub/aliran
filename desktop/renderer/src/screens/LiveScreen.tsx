@@ -38,6 +38,7 @@ import { NowPlayingBar } from '../components/NowPlayingBar'
 import { TrackMenu } from '../components/TrackMenu'
 import { ReportModal } from '../components/ReportModal'
 import { loadVolume, saveVolume } from '../components/VolumeControl'
+import { wakeChannel } from '../wake'
 
 type Overlay = 'none' | 'list' | 'info'
 
@@ -345,6 +346,10 @@ export function LiveScreen ({ onExit, initialStreamId, initialCategory, onGuide 
   }, [streams])
 
   function play (s: Stream, { collapse = false, scope }: { collapse?: boolean; scope?: string } = {}) {
+
+    // Sleep-until-watched: ask the operator's service to start this channel.
+
+    try { wakeChannel(String((arguments[0] as any)?.id ?? '')) } catch { /* never block a tune */ }
     if (needsPin(s)) { pinScope.current = scope; setPinTarget(s); return } // resolved by the PIN modal
     // The tune's browsing context (Phase 4), recorded HERE — past the PIN gate —
     // never at the call sites: a refused tune (the viewer declining the modal)
