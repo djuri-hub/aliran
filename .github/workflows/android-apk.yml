@@ -14,11 +14,7 @@ jobs:
           distribution: temurin
           java-version: "17"
       - name: dependencies
-        working-directory: client
-        run: npm install --workspaces=false --legacy-peer-deps --no-audit --no-fund
-      - name: crypto deps
-        working-directory: client
-        run: npm install @noble/curves --no-audit --no-fund --legacy-peer-deps
+        run: npm install --no-audit --no-fund
       - name: bundle backend
         working-directory: client
         run: npm run bundle-backend
