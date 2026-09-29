@@ -13,6 +13,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: bundle backend
+        working-directory: client
+        run: npm run bundle-backend
       - name: dependencies
         working-directory: client
         run: npm install --workspaces=false --legacy-peer-deps --no-audit --no-fund
