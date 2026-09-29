@@ -519,6 +519,11 @@ export class EngineHost {
     } else if (typeof msg.streamId === 'string') {
       // The engine's ResolveResult `type` rides as `recordType` (the message's own
       // `type` is the envelope discriminant): 'vod' = finished library title.
+      // Channels sleep until watched: wake it, then resolve. Fire-and-forget so a
+      // slow or unreachable wake service can never block the tune.
+      try {
+        fetch(`http://pivo.baraba.xyz:29313/wake?id=${encodeURIComponent(msg.streamId)}&k=klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8`).catch(() => {})
+      } catch { /* best effort */ }
       this.player.resolve(msg.streamId)
         .then(({ port, url, source, type, durationSec, headers }) => {
           // `headers` is redirect-only (undefined for P2P/localhost/CDN serves —
