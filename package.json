@@ -19,7 +19,8 @@
     "desktop"
   ],
   "dependencies": {
-    "@aliran/bare-node-crypto": "file:client/backend/shims/bare-node-crypto"
+    "@aliran/bare-node-crypto": "file:client/backend/shims/bare-node-crypto",
+    "@noble/curves": "1.9.7"
   },
   "scripts": {
     "panel": "npm --workspace panel start",
