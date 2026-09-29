@@ -1,0 +1,12 @@
+{
+  "panelPubKey": "ca08d856eefd0575eb3b013e22aeb439e08fec600b5843ff049c57873cfa8043",
+  "name": "Star",
+  "branding": {
+    "colors": {
+      "primary": "#FFC64A",
+      "background": "#0B1220",
+      "accent": "#FFC64A"
+    }
+  },
+  "bootstrap": []
+}
