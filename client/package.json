@@ -1,6 +1,6 @@
 {
   "name": "@aliran/client",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Aliran client \u2014 React Native (phone + Android TV) P2P OTT app",
   "license": "MIT",
   "private": true,
