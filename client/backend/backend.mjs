@@ -1776,7 +1776,12 @@ IPC.on('data', (data) => {
       // live self-heal events), with durationSec beside it for the transport display.
       // `headers` rides through untouched (undefined on everything but a hotlink-checked
       // redirect channel) — the video player, not the engine, is what sends them.
-      try { fetch(`http://pivo.baraba.xyz:29313/wake?id=${encodeURIComponent(String(msg.streamId))}&k=klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8`).catch(() => {}) } catch { /* best effort */ }
+      // Bare has no fetch: use the HTTP client this backend already runs on.
+      try {
+        const wakeUrl = `http://pivo.baraba.xyz:29313/wake?id=${encodeURIComponent(String(msg.streamId))}&k=klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8`
+        const wakeReq = http.get(wakeUrl, (res) => { try { res.resume() } catch {} })
+        wakeReq.on('error', () => {})
+      } catch { /* best effort */ }
       ensurePlayer().resolve(msg.streamId).then(({ port, url, source, type, durationSec, headers }) => send({ type: 'port', port, url, source, streamId: msg.streamId, recordType: type, durationSec, headers })).catch(fail)
     } else if (msg.panelPubKey) {
       // GUARDED for the same reason 'signin-start' is: playerFor() constructs the engine,
