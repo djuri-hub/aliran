@@ -1777,11 +1777,34 @@ IPC.on('data', (data) => {
       // `headers` rides through untouched (undefined on everything but a hotlink-checked
       // redirect channel) — the video player, not the engine, is what sends them.
       // Bare has no fetch: use the HTTP client this backend already runs on.
+      // Wake first, then WAIT for the channel to be up: the broadcaster needs a few
+      // seconds to pull from the provider, and resolving before that gives no picture.
+      const wakeKey = 'klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8'
+      const wakeBase = 'http://pivo.baraba.xyz:29313'
+      const channelId = String(msg.streamId)
       try {
-        const wakeUrl = `http://pivo.baraba.xyz:29313/wake?id=${encodeURIComponent(String(msg.streamId))}&k=klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8`
-        const wakeReq = http.get(wakeUrl, (res) => { try { res.resume() } catch {} })
+        const wakeReq = http.get(`${wakeBase}/wake?id=${encodeURIComponent(channelId)}&k=${wakeKey}`, (res) => { try { res.resume() } catch {} })
         wakeReq.on('error', () => {})
       } catch { /* best effort */ }
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        const ready = await new Promise((resolve) => {
+          try {
+            const statusReq = http.get(`${wakeBase}/status?k=${wakeKey}`, (res) => {
+              let body = ''
+              res.on('data', (chunk) => { body += chunk })
+              res.on('end', () => {
+                try {
+                  const channel = JSON.parse(body)?.broadcaster?.[channelId]
+                  resolve(channel?.state === 'up')
+                } catch { resolve(false) }
+              })
+            })
+            statusReq.on('error', () => resolve(false))
+          } catch { resolve(false) }
+        })
+        if (ready) break
+      }
       ensurePlayer().resolve(msg.streamId).then(({ port, url, source, type, durationSec, headers }) => send({ type: 'port', port, url, source, streamId: msg.streamId, recordType: type, durationSec, headers })).catch(fail)
     } else if (msg.panelPubKey) {
       // GUARDED for the same reason 'signin-start' is: playerFor() constructs the engine,

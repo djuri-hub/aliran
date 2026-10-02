@@ -16,7 +16,8 @@
       "overlayStrong": "rgba(6, 9, 16, 0.94)",
       "focusFill": "#FFC64A",
       "focusFillText": "#0B1B3A"
-    }
+    },
+    "wallpaper": "assets/star-wallpaper-tv.jpg"
   },
   "bootstrap": []
 }
