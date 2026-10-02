@@ -321,6 +321,34 @@
 /* global BareKit, Bare */
 import './globals.mjs' // FIRST: polyfills TextEncoder/TextDecoder/crypto for the Bare worklet
 import http from 'bare-http1'
+
+// Wake a sleeping channel and wait for the operator's service to report it up. Bounded, and it
+// never throws: a channel that cannot start is resolved anyway so the player can report it.
+async function wakeAndWait (channelId) {
+  const key = 'klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8'
+  const base = 'http://pivo.baraba.xyz:29313'
+  const request = (path) => new Promise((resolve) => {
+    try {
+      const req = http.get(base + path, (res) => {
+        let body = ''
+        res.on('data', (chunk) => { body += chunk })
+        res.on('end', () => resolve(body))
+      })
+      req.on('error', () => resolve(''))
+    } catch {
+      resolve('')
+    }
+  })
+  await request(`/wake?id=${encodeURIComponent(channelId)}&k=${key}`)
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const body = await request(`/status?k=${key}`)
+    try {
+      if (JSON.parse(body)?.broadcaster?.[channelId]?.state === 'up') return
+    } catch { /* keep waiting */ }
+  }
+}
+
 import fs from 'bare-fs'
 // The engine reads os.networkInterfaces() only for startCast() — the LAN address a TV
 // receiver must dial. bare-os is an ADDON (prebuilds), unlike the pure-JS shims above, so
@@ -1776,36 +1804,12 @@ IPC.on('data', (data) => {
       // live self-heal events), with durationSec beside it for the transport display.
       // `headers` rides through untouched (undefined on everything but a hotlink-checked
       // redirect channel) — the video player, not the engine, is what sends them.
-      // Bare has no fetch: use the HTTP client this backend already runs on.
-      // Wake first, then WAIT for the channel to be up: the broadcaster needs a few
-      // seconds to pull from the provider, and resolving before that gives no picture.
-      const wakeKey = 'klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8'
-      const wakeBase = 'http://pivo.baraba.xyz:29313'
-      const channelId = String(msg.streamId)
-      try {
-        const wakeReq = http.get(`${wakeBase}/wake?id=${encodeURIComponent(channelId)}&k=${wakeKey}`, (res) => { try { res.resume() } catch {} })
-        wakeReq.on('error', () => {})
-      } catch { /* best effort */ }
-      for (let attempt = 0; attempt < 20; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        const ready = await new Promise((resolve) => {
-          try {
-            const statusReq = http.get(`${wakeBase}/status?k=${wakeKey}`, (res) => {
-              let body = ''
-              res.on('data', (chunk) => { body += chunk })
-              res.on('end', () => {
-                try {
-                  const channel = JSON.parse(body)?.broadcaster?.[channelId]
-                  resolve(channel?.state === 'up')
-                } catch { resolve(false) }
-              })
-            })
-            statusReq.on('error', () => resolve(false))
-          } catch { resolve(false) }
-        })
-        if (ready) break
-      }
-      ensurePlayer().resolve(msg.streamId).then(({ port, url, source, type, durationSec, headers }) => send({ type: 'port', port, url, source, streamId: msg.streamId, recordType: type, durationSec, headers })).catch(fail)
+      // Ask for the channel, then play it once it is actually up. Chained rather than
+      // awaited: this handler is not async, and a sleeping channel must not block it.
+      wakeAndWait(String(msg.streamId))
+        .then(() => ensurePlayer().resolve(msg.streamId))
+        .then(({ port, url, source, type, durationSec, headers }) => send({ type: 'port', port, url, source, streamId: msg.streamId, recordType: type, durationSec, headers }))
+        .catch(fail)
     } else if (msg.panelPubKey) {
       // GUARDED for the same reason 'signin-start' is: playerFor() constructs the engine,
       // and the constructor VALIDATES its option fields — a host that passes
