@@ -90,10 +90,6 @@ export function LiveScreen ({ onExit, initialStreamId, initialCategory, onGuide 
   // is set but this session hasn't unlocked yet — the PIN modal resolves it.
   const [pinTarget, setPinTarget] = useState<Stream | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(() => {
-  // The channel-is-waking screen. Only for a FRESH tune (phase 'tuning'): a
-  // mid-playback self-heal never carries that phase, so it cannot paint over a
-  // picture that is already playing.
-  const coldWait = !!tuneUI && tuneUI.active && tuneUI.phase === 'tuning'
     const candidate = initialStreamId ?? lastStreamId ?? pickHero(visibleStreams(backend.streams))?.id ?? null
     const s = backend.streams.find((x) => x.id === candidate)
     return s && needsPin(s) ? null : candidate // the mount effect below raises the PIN modal
@@ -115,6 +111,10 @@ export function LiveScreen ({ onExit, initialStreamId, initialCategory, onGuide 
   // heading can never outlive the error it describes.
   const [offline, setOffline] = useState(false)
   const [tuneUI, setTuneUI] = useState<{ id: number; phase: TunePillPhase; active: boolean } | null>(null)
+  // The channel-is-waking screen, derived from the tune phase. MUST come after the
+  // tuneUI declaration above: reading it earlier is a TDZ ReferenceError on first
+  // render, and React answers it with a black window (shipped once, 0.5.3 — fixed).
+  const coldWait = !!tuneUI && tuneUI.active && tuneUI.phase === 'tuning'
   const [now, setNow] = useState(() => new Date())
   // In-stream tracks of the CURRENT channel + the picks (subtitles default Off,
   // audio = player default). Reset on channel change — a new stream's tracks differ.
