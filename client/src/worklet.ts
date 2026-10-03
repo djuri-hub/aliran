@@ -16,7 +16,14 @@ export type { Stream, BackendMessage } from '@aliran/react-native'
 
 // How many channels to pre-warm at login (lowest curated order first). Covers the
 // typical zapping range; bounded so a big catalog doesn't open too many topics at once.
-const PREWARM_CHANNELS = 12
+// ⚠ ZERO, NOT 12. Prewarm opened the first twelve channels' feeds the moment a device
+// signed in, so EVERY logged-in app held a swarm connection to twelve channels it was
+// not watching — twelve channels that could never sleep, and a peer count on the
+// operator's dashboard that counted devices which were not watching anything. On an
+// on-demand fleet the only channel worth holding is the one on screen; the cost of
+// zero is a slightly colder first zap, and that is now covered by the wake, the 90 s
+// tune budget and the on-screen "KANAL SE POKREĆE" animation.
+const PREWARM_CHANNELS = 0
 
 // Adjacent-channel zap prefetch (keep the next/previous channels' newest segment
 // replicated while watching, so CH+/CH- starts from warm bytes). This is only the
@@ -26,6 +33,12 @@ const PREWARM_CHANNELS = 12
 // prewarm it costs standing bandwidth ≈ the neighbors' bitrate while a channel
 // plays (the engine's adaptive gate suspends it on metered networks, stalls, or a
 // thin pipe — see sdk/player.js).
+// How long the ENGINE may spend on one tune attempt before it evicts and retries. Default
+// is 30 s; raised because a cold on-demand channel is started by the wake, and the first
+// segment can take longer than that to appear. With the evict-and-retry ladder that gives
+// ~2.5 minutes of honest trying before the engine calls the channel unreachable.
+const TUNE = { timeoutMs: 45000 }
+
 const ZAP_PREFETCH: boolean = false
 
 // "Send to TV": which half of it THIS device may play. The flags are not one switch —
@@ -100,7 +113,7 @@ class Backend extends AliranBackend {
     // prewarm: open the first N channels' feeds right after login so the FIRST zap to a
     // channel is warm (not just re-zaps). Capped so a large lineup doesn't join hundreds
     // of DHT topics at once; a bounded TV lineup warms fully.
-    this.start(bundleBase64, { panelPubKey, hybrid, swarm: swarmFor(bootstrap), prewarm: PREWARM_CHANNELS, zapPrefetch: ZAP_PREFETCH, remote: REMOTE, appVersion: await appVersion(), debug: true })
+    this.start(bundleBase64, { panelPubKey, hybrid, swarm: swarmFor(bootstrap), prewarm: PREWARM_CHANNELS, tune: TUNE, zapPrefetch: ZAP_PREFETCH, remote: REMOTE, appVersion: await appVersion(), debug: true })
   }
 
   // Public (keyless) flavor, S36: boot the worklet WITHOUT a panel so the persisted
@@ -108,7 +121,7 @@ class Backend extends AliranBackend {
   // connect()s to the saved panel or routes to the Connect screen. Same engine policy
   // as boot(); only the panel key arrives later.
   async bootIdle (hybrid?: HybridConfig, bootstrap?: string[]) {
-    this.start(bundleBase64, { hybrid, swarm: swarmFor(bootstrap), prewarm: PREWARM_CHANNELS, zapPrefetch: ZAP_PREFETCH, remote: REMOTE, appVersion: await appVersion(), debug: true })
+    this.start(bundleBase64, { hybrid, swarm: swarmFor(bootstrap), prewarm: PREWARM_CHANNELS, tune: TUNE, zapPrefetch: ZAP_PREFETCH, remote: REMOTE, appVersion: await appVersion(), debug: true })
   }
 }
 

@@ -72,7 +72,14 @@ const LOGIN_MAX_RETRIES = 24 // ≈1 minute of dialing before the error surfaces
 // How many channels to pre-warm at login (lowest curated order first) — the same
 // bounded default as the phone app: covers the typical zapping range without opening
 // hundreds of DHT topics on a big catalog.
-const PREWARM_CHANNELS = 12
+// ⚠ ZERO, NOT 12. Prewarm opened the first twelve channels' feeds the moment a device
+// signed in, so EVERY logged-in app held a swarm connection to twelve channels it was
+// not watching — twelve channels that could never sleep, and a peer count on the
+// operator's dashboard that counted devices which were not watching anything. On an
+// on-demand fleet the only channel worth holding is the one on screen; the cost of
+// zero is a slightly colder first zap, and that is now covered by the wake, the 90 s
+// tune budget and the on-screen "KANAL SE POKREĆE" animation.
+const PREWARM_CHANNELS = 0
 
 const TUNE_TIMEOUT_MS = 45000
 
