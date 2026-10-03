@@ -1355,3 +1355,35 @@ img { -webkit-user-drag: none; }
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
+
+/* The wait screen while a cold channel wakes (see LiveScreen's coldWait). Deliberately the
+   same brand picture the broadcast slate paints: navy field, gold star, three pulses. */
+.live-starting {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #0E1A33 0%, #05070F 100%);
+  pointer-events: none;
+}
+.live-starting-star {
+  font-size: 84px; line-height: 1; color: #FFC64A;
+  animation: star-breathe 1800ms ease-in-out infinite;
+}
+.live-starting-title {
+  margin-top: 22px; font-size: 30px; font-weight: 700; letter-spacing: 1px; color: #F2F6FF;
+}
+.live-starting-sub { margin-top: 8px; font-size: 16px; color: #93A4BF; }
+.live-starting-dots { display: flex; gap: 26px; margin-top: 30px; }
+.live-starting-dots i {
+  width: 16px; height: 16px; border-radius: 3px; background: #FFC64A;
+  animation: dot-pulse 1800ms ease-in-out infinite;
+}
+.live-starting-dots i:nth-child(2) { animation-delay: 600ms; }
+.live-starting-dots i:nth-child(3) { animation-delay: 1200ms; }
+@keyframes star-breathe {
+  0%, 100% { transform: scale(0.94); opacity: 0.72; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@keyframes dot-pulse {
+  0%, 100% { transform: scale(0.5); opacity: 0.55; }
+  33% { transform: scale(1); opacity: 1; }
+}

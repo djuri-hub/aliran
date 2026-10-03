@@ -74,6 +74,8 @@ const LOGIN_MAX_RETRIES = 24 // ≈1 minute of dialing before the error surfaces
 // hundreds of DHT topics on a big catalog.
 const PREWARM_CHANNELS = 12
 
+const TUNE_TIMEOUT_MS = 45000
+
 // Device-local VOD prefs (S54a, design D9) — "My List" and watch history. This process
 // owns the prefs file, so it — not the renderer — decides what a valid entry is and how
 // many fit: a setter carries a whole array, and it is re-validated, de-duplicated and
@@ -293,6 +295,10 @@ export class EngineHost {
       panelPubKey: this.descriptor.panelPubKey,
       storeDir: this.storeDir(),
       prewarm: PREWARM_CHANNELS,
+      // A cold on-demand channel is started by the wake, and the first segment can
+      // take longer than the 30 s default to appear — the app then called a channel
+      // that was two seconds from playing "offline". See TUNE_TIMEOUT_MS.
+      tune: { timeoutMs: TUNE_TIMEOUT_MS },
       // The persisted "Smooth zapping" choice wins over the compiled default (off).
       zapPrefetch: saved ?? false,
       hybrid: this.descriptor.hybrid,

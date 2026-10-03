@@ -90,6 +90,10 @@ export function LiveScreen ({ onExit, initialStreamId, initialCategory, onGuide 
   // is set but this session hasn't unlocked yet — the PIN modal resolves it.
   const [pinTarget, setPinTarget] = useState<Stream | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(() => {
+  // The channel-is-waking screen. Only for a FRESH tune (phase 'tuning'): a
+  // mid-playback self-heal never carries that phase, so it cannot paint over a
+  // picture that is already playing.
+  const coldWait = !!tuneUI && tuneUI.active && tuneUI.phase === 'tuning'
     const candidate = initialStreamId ?? lastStreamId ?? pickHero(visibleStreams(backend.streams))?.id ?? null
     const s = backend.streams.find((x) => x.id === candidate)
     return s && needsPin(s) ? null : candidate // the mount effect below raises the PIN modal
@@ -561,6 +565,17 @@ export function LiveScreen ({ onExit, initialStreamId, initialCategory, onGuide 
       {/* Fullscreen surface: a click opens the channel list — scoped to the
           tuned-from category (Phase 4). */}
       {overlay === 'none' && <div className="live-catcher" onClick={openListInContext} />}
+
+      {/* While a cold channel wakes there is no feed at all, so the surface would be
+          black — this fills that window; the broadcast slate takes over once one exists. */}
+      {coldWait && !error && (
+        <div className="live-starting">
+          <div className="live-starting-star">★</div>
+          <div className="live-starting-title">KANAL SE POKREĆE</div>
+          <div className="live-starting-sub">pripremam strim, sačekajte</div>
+          <div className="live-starting-dots"><i /><i /><i /></div>
+        </div>
+      )}
 
       {error && (
         <div className="live-error">
