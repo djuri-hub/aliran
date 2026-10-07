@@ -23,7 +23,13 @@ export type { Stream, BackendMessage } from '@aliran/react-native'
 // on-demand fleet the only channel worth holding is the one on screen; the cost of
 // zero is a slightly colder first zap, and that is now covered by the wake, the 90 s
 // tune budget and the on-screen "KANAL SE POKREĆE" animation.
-const PREWARM_CHANNELS = 0
+// TEST 0.7.5 - back to a SMALL warm set (3), not 12 and not 0.
+// 12 held a connection to twelve channels a device was not watching; 0 turned out to
+// be worse in the other direction: every tune became a COLD join, and when the swarm
+// handshake did not land immediately the player sat on an empty local playlist - black,
+// permanently (the retries landed on the same empty feed). Three keeps the first zap
+// warm without holding a dozen idle channels open.
+const PREWARM_CHANNELS = 3
 
 // Adjacent-channel zap prefetch (keep the next/previous channels' newest segment
 // replicated while watching, so CH+/CH- starts from warm bytes). This is only the
@@ -39,7 +45,13 @@ const PREWARM_CHANNELS = 0
 // ~2.5 minutes of honest trying before the engine calls the channel unreachable.
 const TUNE = { timeoutMs: 45000 }
 
-const ZAP_PREFETCH: boolean = false
+// UKLJUCENO. Ovo je odgovor na 'prebacivanje kanala je strasno sporo'.
+// Dok gledas jedan kanal, engine drzi spremnim najblize susjede (CH+/CH-), pa prelazak
+// krece iz toplih bajtova umjesto iz hladnog spajanja na mrezu. Kosta propusnost otprilike
+// dva susjedna kanala DOK gledas - za razliku od prewarm-a koji je drzao dvanaest kanala
+// i kad nista ne gledas. Na mobilnoj mrezi engine ga sam obustavi kad veza postane skupa
+// ili tanka.
+const ZAP_PREFETCH: boolean = true
 
 // "Send to TV": which half of it THIS device may play. The flags are not one switch —
 // two of them are OPPOSITES on a television, on purpose — and reading them as one is the
