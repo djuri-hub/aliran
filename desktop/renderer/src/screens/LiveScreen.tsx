@@ -115,6 +115,23 @@ export function LiveScreen ({ onExit, initialStreamId, initialCategory, onGuide 
   // tuneUI declaration above: reading it earlier is a TDZ ReferenceError on first
   // render, and React answers it with a black window (shipped once, 0.5.3 — fixed).
   const coldWait = !!tuneUI && tuneUI.active && tuneUI.phase === 'tuning'
+
+  // HARD CAP - the Android twin of this fix, and for the same reason.
+  //
+  // The overlay is an OPAQUE cover over the video surface, so its exit condition is the
+  // whole ballgame: if the tune phase never leaves 'tuning' (a lost 'playing' event, an
+  // open that stalls, a stream that starts without reporting) the viewer is left looking at
+  // the star while the channel plays underneath, and only a re-tune gets out. Measured on
+  // the phone build as intermittent; the desktop shares the code path.
+  //
+  // Twenty seconds, then the cover comes off regardless. Nothing is lost: the broadcaster
+  // paints its own slate with the same brand picture while a channel is cold, so a channel
+  // that is genuinely still waking shows the same animation - streamed instead of drawn.
+  useEffect(() => {
+    if (!coldWait) return undefined
+    const t = setTimeout(() => setTuneUI((prev) => (prev && prev.active && prev.phase === 'tuning' ? { ...prev, active: false } : prev)), 20000)
+    return () => clearTimeout(t)
+  }, [coldWait])
   const [now, setNow] = useState(() => new Date())
   // In-stream tracks of the CURRENT channel + the picks (subtitles default Off,
   // audio = player default). Reset on channel change — a new stream's tracks differ.
