@@ -532,12 +532,11 @@ export class EngineHost {
     } else if (typeof msg.streamId === 'string') {
       // The engine's ResolveResult `type` rides as `recordType` (the message's own
       // `type` is the envelope discriminant): 'vod' = finished library title.
-      // Channels sleep until watched: wake it, then resolve. Fire-and-forget so a
-      // slow or unreachable wake service can never block the tune.
-      try {
-        fetch(`http://pivo.baraba.xyz:29313/wake?id=${encodeURIComponent(msg.streamId)}&k=klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8`).catch(() => {})
-      } catch { /* best effort */ }
-      this.player.resolve(msg.streamId)
+      // Channels sleep until watched: wake it, wait until it is actually up, then
+      // resolve. Chained rather than awaited - this handler is not async, and a
+      // sleeping channel must not block it.
+      wakeAndWaitForUp(msg.streamId)
+        .then(() => this.player.resolve(msg.streamId))
         .then(({ port, url, source, type, durationSec, headers }) => {
           // `headers` is redirect-only (undefined for P2P/localhost/CDN serves —
           // sdk/player.js resolve() attaches it on the redirect branch alone). Kept
@@ -563,5 +562,29 @@ function publicDescriptor (d) {
     branding: d.branding,
     sections: d.sections,
     dev: d.dev
+  }
+}
+
+// Wake a sleeping channel, then WAIT until the operator reports it 'up' before resolving it.
+// /wake answers the moment the broadcaster has spawned ffmpeg - state 'starting' - which for
+// a sleeping source is ten to twenty seconds before the first segment exists. Resolving on
+// 'starting' is what killed the first tap on a sleeping channel, and why a second tap (the
+// channel now warm) opened at once. Poll the operator's own status - stopped | starting | up
+// | waiting-input | backoff - twice a second, up to 30 s, returning the instant it reads
+// 'up'. A warm channel costs one request; a source that is genuinely dead is handed to the
+// engine's own tune budget after 6 s of backoff/stopped, rather than held here.
+async function wakeAndWaitForUp (channelId) {
+  const key = 'klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8'
+  const base = 'http://pivo.baraba.xyz:29313'
+  try {
+    await fetch(`${base}/wake?id=${encodeURIComponent(channelId)}&k=${key}`)
+  } catch { /* a wake that never lands is the engine's problem, not the tune's */ }
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const state = (await (await fetch(`${base}/status?k=${key}`)).json())?.broadcaster?.[channelId]?.state
+      if (state === 'up') return
+      if (attempt >= 12 && (state === 'backoff' || state === 'stopped')) return
+    } catch { /* keep waiting */ }
+    await new Promise((resolve) => setTimeout(resolve, 500))
   }
 }

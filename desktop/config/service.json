@@ -5,6 +5,38 @@
     {
       "host": "51.158.145.23",
       "port": 49737
+    },
+    {
+      "host": "dht1.hypercore.io",
+      "port": 49737
+    },
+    {
+      "host": "dht2.hypercore.io",
+      "port": 49737
+    },
+    {
+      "host": "dht3.hypercore.io",
+      "port": 49737
     }
-  ]
+  ],
+  "branding": {
+    "colors": {
+      "primary": "#FFC64A",
+      "accent": "#FFC64A",
+      "focus": "#FFC64A",
+      "background": "#0A0F1C",
+      "surface": "#121A2B",
+      "text": "#F4F7FC",
+      "textDim": "#94A3B8",
+      "live": "#F43F5E",
+      "onPrimary": "#0B1B3A",
+      "videoBackground": "#000000",
+      "overlay": "rgba(7, 11, 21, 0.86)",
+      "overlayStrong": "rgba(4, 7, 14, 0.95)",
+      "focusFill": "#1B2537",
+      "focusFillText": "#F4F7FC",
+      "brandSurface": "#0A0F1C",
+      "brandText": "#F4F7FC"
+    }
+  }
 }
