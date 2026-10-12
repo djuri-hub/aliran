@@ -576,22 +576,42 @@ function publicDescriptor (d) {
 async function wakeAndWaitForUp (channelId) {
   const key = 'klNNYdS-fJxSNyQfFIO9mkPNPGs82vt8'
   const base = 'http://pivo.baraba.xyz:29313'
+  // Every request carries its own deadline. The Android worklet needed this for a hard
+  // reason - bare-http1 has no timeout at all, so a stalled request hung the tune for
+  // ever - and the same guard belongs here, where a stalled fetch parks the host the same
+  // way. A timed-out request rejects, which the loop below already tolerates.
+  const get = async (path, timeoutMs = 4000) => {
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), timeoutMs)
+    try {
+      return await fetch(base + path, { signal: ac.signal })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  const wakeUrl = `/wake?id=${encodeURIComponent(channelId)}&k=${key}`
+  let lastWake = 0
+  const wake = () => { lastWake = Date.now(); return get(wakeUrl).catch(() => {}) }
   try {
-    await fetch(`${base}/wake?id=${encodeURIComponent(channelId)}&k=${key}`)
+    await wake()
   } catch { /* a wake that never lands is the engine's problem, not the tune's */ }
-  let lastWake = Date.now()
-  const wake = () => fetch(`${base}/wake?id=${encodeURIComponent(channelId)}&k=${key}`)
+  let unreadable = 0
   for (let attempt = 0; attempt < 70; attempt++) {
     try {
-      const state = (await (await fetch(`${base}/status?k=${key}`)).json())?.broadcaster?.[channelId]?.state
+      const state = (await (await get(`/status?k=${key}`)).json())?.broadcaster?.[channelId]?.state
       if (state === 'up') return
       // 'stopped' is NOT terminal: /wake answers 'queued' without starting anything when a
       // wake is already in flight or the slots are busy, so a channel on its way up reads
       // 'stopped' for a while - and treating that as final reported a live channel as
-      // offline until the viewer tried again. Keep waiting, and re-issue the wake.
+      // offline until the viewer tried again.
       if (state === 'backoff' && attempt >= 30) return // 15 s of a dying source
-      if (state !== 'starting' && Date.now() - lastWake > 5000) { lastWake = Date.now(); void wake() }
-    } catch { /* keep waiting */ }
+      unreadable = 0
+      if (state !== 'starting' && Date.now() - lastWake > 5000) void wake()
+    } catch {
+      // Unreadable, not slow: hand the channel to the engine's own tune budget rather than
+      // spending the viewer's patience on a status we cannot read.
+      if (++unreadable >= 4) return
+    }
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
 }
