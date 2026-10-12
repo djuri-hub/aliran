@@ -579,11 +579,18 @@ async function wakeAndWaitForUp (channelId) {
   try {
     await fetch(`${base}/wake?id=${encodeURIComponent(channelId)}&k=${key}`)
   } catch { /* a wake that never lands is the engine's problem, not the tune's */ }
-  for (let attempt = 0; attempt < 60; attempt++) {
+  let lastWake = Date.now()
+  const wake = () => fetch(`${base}/wake?id=${encodeURIComponent(channelId)}&k=${key}`)
+  for (let attempt = 0; attempt < 70; attempt++) {
     try {
       const state = (await (await fetch(`${base}/status?k=${key}`)).json())?.broadcaster?.[channelId]?.state
       if (state === 'up') return
-      if (attempt >= 12 && (state === 'backoff' || state === 'stopped')) return
+      // 'stopped' is NOT terminal: /wake answers 'queued' without starting anything when a
+      // wake is already in flight or the slots are busy, so a channel on its way up reads
+      // 'stopped' for a while - and treating that as final reported a live channel as
+      // offline until the viewer tried again. Keep waiting, and re-issue the wake.
+      if (state === 'backoff' && attempt >= 30) return // 15 s of a dying source
+      if (state !== 'starting' && Date.now() - lastWake > 5000) { lastWake = Date.now(); void wake() }
     } catch { /* keep waiting */ }
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
