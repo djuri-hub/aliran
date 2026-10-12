@@ -6665,9 +6665,34 @@ export class AliranPlayer extends Emitter {
     // merge below always has a coherent snapshot to work from whenever it runs.
     const streams = []
     const seen = new Set()
-    for (const id of this._entitled.keys()) {
-      const node = await this._panelBee.get('catalog/' + id)
-      if (node && node.value) { streams.push(this._display(port, id, node.value)); seen.add(id) }
+    // ⚠⚠ CONCURRENT, IN CHUNKS - and this is not a micro-optimisation.
+    //
+    // The loop this replaces awaited one bee get per entitled stream, IN SEQUENCE. The
+    // panel bee is a SPARSE replica (hypercore 10 defaults sparse:true, so every
+    // _panelBee get is a round trip for the tree node it needs), and the panel appends
+    // constantly - a user record is rewritten on every login and every device
+    // registration - so those nodes are NEW in every session. 144 sequential round
+    // trips is tens of seconds on a phone, and that is worse than slow: _pushCatalog
+    // abandons a rebuild that runs past _pushTimeoutMs (30 s) WITHOUT emitting, because
+    // a truncated lineup would read to the host as 'these channels are gone'. So the
+    // viewer sits on a half-filled list while each retry caches a few more blocks and
+    // the next append tries again. That is the operator's report, verbatim: opening the
+    // app or switching to e.g. FILM took up to a minute for the channels to fill.
+    //
+    // Chunked rather than one Promise.all over every id: each get in flight is a block
+    // request against the same socket, and a phone link wants a handful of those, not
+    // 144. Order is preserved exactly - each slice is pushed in id order - so the
+    // curated zap walk and the CH+/CH- order are untouched. A get that throws still
+    // rejects the sweep exactly as it did before.
+    const ids = [...this._entitled.keys()]
+    const READ_CHUNK = 16
+    for (let at = 0; at < ids.length; at += READ_CHUNK) {
+      const slice = ids.slice(at, at + READ_CHUNK)
+      const nodes = await Promise.all(slice.map((id) => this._panelBee.get('catalog/' + id)))
+      for (let i = 0; i < slice.length; i++) {
+        const node = nodes[i]
+        if (node && node.value) { streams.push(this._display(port, slice[i], node.value)); seen.add(slice[i]) }
+      }
     }
     // …then the drive's published lineup (S57). These ids are NOT in the bee at all — the
     // whole point of the feature — so nothing above could have found them.
